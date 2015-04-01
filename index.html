@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>URL Cast Demo</title>
+
+  <style type="text/css">
+    html, body {height:100%; width: 100%; margin: 0; padding: 0; border: 0;}
+
+    body {
+      font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+      font-size: 14px;
+      line-height: 1.42857143;
+      color: #333;
+      background-color: #FFF;
+    }
+
+    #wrapper {
+      width: 770px;
+      position: relative;
+      top: 20%;
+      transform: translateY(-20%);
+      margin: auto;
+    }
+
+    h1 {margin: 0; font-size: 36px;}
+
+    input, select, button {
+      border: 2px solid #CCC;
+      border-radius: 5px;
+      font-size: 25px;
+      font-weight: bold;
+      padding: 10px;
+    }
+
+    input:focus, select:focus, button:focus {outline: none;}
+    input:focus, select:focus, button:active {
+      outline: none;
+      border-color: #8ecaed;
+      box-shadow: 0 0 5px #8ecaed;
+    }
+
+    select {
+      padding: 9px 38px 9px 9px;
+      background: url('//cdn1.iconfinder.com/data/icons/cc_mono_icon_set/blacks/16x16/br_down.png') no-repeat right #ddd;
+      -webkit-appearance: none;
+      background-position-x: 120px;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+    }
+
+    button {background: #FFF; padding: 10px 18px;}
+
+    input[disabled], select[disabled], button[disabled] {
+      background: #FAFAFA; cursor: not-allowed;
+    }
+
+    .complete, .complete a {text-decoration: line-through; color: #ccc;}
+    .notready {color: #ccc;}
+
+    #notifications {position: fixed; bottom: 0; right: 0;}
+    .notification {
+      background: #222;
+      color: #FFF;
+      padding: 13px 20px;
+      margin: 10px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="wrapper">
+    <h1>URL Cast Receiver</h1>
+
+    <p id="step1">Step 1: <a href="#" id="requestSession">Start cast session</a></p>
+    <p id="step2" class="notready">Step 2: Send url</p>
+
+    <input id="url" class="border" type="text" placeholder="e.g. http://example.com" size="30" value="http://www.themoodtool.com/" disabled/>
+    <select id="type" disabled>
+      <option value="iframe">iframe</option>
+      <option value="loc">location</option>
+    </select>
+    <button id="send" disabled>send</button>
+
+    <h3>Details</h3>
+    <p>
+      There are two methods for casting, with pros and cons:
+
+      <ol>
+        <li>Load an iframe (You will have trouble loading a url with x-frame-options: same origin.)</li>
+        <li>Change the window location (You will lose control when you load the url over the reciever.)</li>
+      </ol>
+
+      Also, notice the chromecast viewport is 1280x720 and the default background is black (noticable on location style loads).
+    </p>
+
+    <p><a href="#">&laquo; GitHub</a></p>
+  </div>
+
+  <div id="notifications"></div>
+
+  <script type="text/javascript" src="//www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
+  <script type="text/javascript">
+
+    // click handlers
+    document.getElementById('requestSession').onclick = function() {
+      chrome.cast.requestSession(sessionListener, onErr);
+    };
+
+    document.getElementById('send').onclick = function() {
+      var url = document.getElementById('url').value
+        , type = document.getElementById('type').value;
+
+      if (!url || !type) return;
+
+      sendMessage({type: type, url: url});
+    };
+
+    var applicationID = '5CB45E5A'
+      , namespace = 'urn:x-cast:com.url.cast'
+      , receiverDead = false
+      , session = null;
+
+    // initialize
+    window.__onGCastApiAvailable = function(loaded) {
+      if (loaded) initializeCastApi();
+    };
+
+    function initializeCastApi() {
+      var sessionRequest = new chrome.cast.SessionRequest(applicationID);
+
+      var apiConfig = new chrome.cast.ApiConfig(
+        sessionRequest,
+        sessionListener,
+        receiverListener
+      );
+
+      chrome.cast.initialize(
+        apiConfig,
+        onSuccess.bind(this, 'initialized ok'),
+        onErr
+      );
+    }
+
+    function onErr(err) { console.log('Err: ' + JSON.stringify(err)); }
+    function onSuccess(msg) { console.log('Sucess: ' + msg); }
+
+    function sessionListener(newSession) {
+      console.log('New session ID:' + newSession.sessionId);
+      session = newSession;
+      session.addUpdateListener(sessionUpdateListener);
+      session.addMessageListener(namespace, receiveMessage);
+
+      enableInputs();
+    }
+
+    function receiverListener(e) {
+      (e === 'available')
+        ? console.log('receiver found')
+        : console.log('no receivers found');
+    }
+
+    function sessionUpdateListener(isAlive) {
+      if (!isAlive) {
+        session = null;
+        disableInputs();
+      }
+      console.log('Session is alive?: ', isAlive);
+    }
+
+    function receiveMessage(namespace, msg) {
+      // namespace = 'urn:x-cast:com.url.cast'
+      // it only ever says 'ok' - just cpnfirming when a url has been received
+      console.log('Receiver said: ' + msg);
+    }
+
+    function sendMessage(msg) {
+      if (receiverDead || !session) return;
+
+      // send msg
+      session.sendMessage(
+        namespace,
+        msg,
+        function() {
+          console.log('Message sent: ', msg);
+          notify('Message sent: ' + JSON.stringify(msg));
+        },
+        onErr
+      );
+
+      if (msg.type === 'loc') {
+        receiverDead = true;
+        disableInputs();
+        notify('Receiver will now be unrepsonsive');
+      }
+    }
+
+    function notify(msg) {
+      var el = document.getElementById('notifications')
+        , notice = document.createElement('div');
+
+      notice.className = 'notification';
+      notice.innerHTML = msg;
+
+      el.appendChild(notice);
+
+      // notice self destruct timer
+      setTimeout(function() {
+        el.removeChild(notice);
+      }, 5000);
+    }
+
+    function enableInputs() {
+      document.getElementById('url').disabled = false;
+      document.getElementById('type').disabled = false;
+      document.getElementById('send').disabled = false;
+
+      document.getElementById('step1').classList.add('complete');
+      document.getElementById('step2').classList.remove('notready');
+      document.getElementById('url').focus();
+    }
+
+    function disableInputs() {
+      document.getElementById('url').disabled = true;
+      document.getElementById('type').disabled = true;
+      document.getElementById('send').disabled = true;
+
+      document.getElementById('step1').classList.remove('complete');
+      document.getElementById('step2').classList.add('notready');
+    }
+
+  </script>
+</body>
+</html>
