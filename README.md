@@ -6,7 +6,7 @@ Try it with the [sender demo](https://demille.github.io/url-cast-receiver).
 
 ## Usage
 
-You can use a hosted version now (use **ASFDF333** for your appId),
+You can use a hosted version now (use **5CB45E5A** for your appId),
 or you can clone / customize this repo and host your own.
 
 URLs are sent to the receiver by sending messages on the `urn:x-cast:com.url.cast` namespace.
