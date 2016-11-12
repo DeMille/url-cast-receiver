@@ -7,7 +7,7 @@
     html, body {height:100%; width: 100%; margin: 0; padding: 0; border: 0;}
 
     body {
-      font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       font-size: 14px;
       line-height: 1.42857143;
       color: #333;
@@ -29,7 +29,8 @@
       border-radius: 5px;
       font-size: 25px;
       font-weight: bold;
-      padding: 10px;
+      padding: 10px 15px;
+      background: #FFF;
     }
 
     input:focus, select:focus, button:focus {outline: none;}
@@ -40,18 +41,25 @@
     }
 
     select {
-      padding: 9px 38px 9px 9px;
-      background: url('//cdn1.iconfinder.com/data/icons/cc_mono_icon_set/blacks/16x16/br_down.png') no-repeat right #ddd;
+      padding: 10px 38px 10px 15px;
+      background: url('./br_down.png') no-repeat right #fff;
       -webkit-appearance: none;
       background-position-x: 120px;
       -webkit-appearance: none;
       -moz-appearance: none;
     }
 
-    button {background: #FFF; padding: 10px 18px;}
-
     input[disabled], select[disabled], button[disabled] {
-      background: #FAFAFA; cursor: not-allowed;
+      background: #FAFAFA;
+      cursor: not-allowed;
+    }
+
+    select[disabled] {
+      background: url('./br_down.png') no-repeat right #FAFAFA;
+      -webkit-appearance: none;
+      background-position-x: 120px;
+      -webkit-appearance: none;
+      -moz-appearance: none;
     }
 
     .complete, .complete a {text-decoration: line-through; color: #ccc;}
@@ -65,6 +73,14 @@
       margin: 10px;
       border-radius: 2px;
     }
+
+    .error {
+      background: #e64a4a;
+      color: #FFF;
+      padding: 13px 20px;
+      margin: 10px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 
@@ -72,10 +88,12 @@
   <div id="wrapper">
     <h1>URL Cast Receiver</h1>
 
-    <p id="step1">Step 1: <a href="#" id="requestSession">Start cast session</a></p>
+    <p id="step1">Step 1:</p>
+    <button id="requestSession">Start cast session</button>
+
     <p id="step2" class="notready">Step 2: Send url</p>
 
-    <input id="url" class="border" type="text" placeholder="e.g. http://example.com" size="30" value="http://www.themoodtool.com/" disabled/>
+    <input id="url" class="border" type="text" placeholder="e.g. http://example.com" size="30" value="https://www.windytv.com/" disabled/>
     <select id="type" disabled>
       <option value="iframe">iframe</option>
       <option value="loc">location</option>
@@ -88,10 +106,10 @@
 
       <ol>
         <li>Load an iframe (You will have trouble loading a url with x-frame-options: same origin.)</li>
-        <li>Change the window location (You will lose control when you load the url over the reciever.)</li>
+        <li>Change the window location (You will lose control when you load the url over the receiver.)</li>
       </ol>
 
-      Also, notice the chromecast viewport is 1280x720 and the default background is black (noticable on location style loads).
+      Also, notice the chromecast viewport is 1280x720 and the default background is black before the receiver loads.
     </p>
 
     <p><a href="#">&laquo; GitHub</a></p>
@@ -99,7 +117,7 @@
 
   <div id="notifications"></div>
 
-  <script type="text/javascript" src="//www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
   <script type="text/javascript">
 
     // click handlers
@@ -142,8 +160,14 @@
       );
     }
 
-    function onErr(err) { console.log('Err: ' + JSON.stringify(err)); }
-    function onSuccess(msg) { console.log('Sucess: ' + msg); }
+    function onErr(err) {
+      console.log('Err: ' + JSON.stringify(err));
+      showError(err);
+    }
+
+    function onSuccess(msg) {
+      console.log('Sucess: ' + msg);
+    }
 
     function sessionListener(newSession) {
       console.log('New session ID:' + newSession.sessionId);
@@ -170,7 +194,7 @@
 
     function receiveMessage(namespace, msg) {
       // namespace = 'urn:x-cast:com.url.cast'
-      // it only ever says 'ok' - just cpnfirming when a url has been received
+      // it only ever says 'ok' - just confirming when a url has been received
       console.log('Receiver said: ' + msg);
     }
 
@@ -191,7 +215,7 @@
       if (msg.type === 'loc') {
         receiverDead = true;
         disableInputs();
-        notify('Receiver will now be unrepsonsive');
+        notify('Receiver will now be unresponsive');
       }
     }
 
@@ -201,6 +225,21 @@
 
       notice.className = 'notification';
       notice.innerHTML = msg;
+
+      el.appendChild(notice);
+
+      // notice self destruct timer
+      setTimeout(function() {
+        el.removeChild(notice);
+      }, 5000);
+    }
+
+    function showError(err) {
+      var el = document.getElementById('notifications')
+        , notice = document.createElement('div');
+
+      notice.className = 'error';
+      notice.innerHTML = 'Got error!: ' + JSON.stringify(err);
 
       el.appendChild(notice);
 
