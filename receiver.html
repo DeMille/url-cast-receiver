@@ -34,6 +34,7 @@
 
           if (msg.type === 'iframe') updateFrame(msg.url);
           if (msg.type === 'loc') updateLocation(msg.url);
+          if (msg.type === 'msg') postMessage(msg.data);
         };
 
         // initialize CastReceiverManager
@@ -52,6 +53,10 @@
       function updateLocation(url) {
         window.castReceiverManager.setApplicationState('Now Playing: ' + url);
         window.location.href = url;
+      }
+
+      function postMessage(data) {
+        document.getElementById('iframe').contentWindow.postMessage(data, "*");
       }
     </script>
   </body>
