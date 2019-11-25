@@ -34,7 +34,7 @@ session.sendMessage(namespace, msg, onSuccess, onErr);
 - Cons: Reciever gets overridden with page load, so you can no longer communicate with it without stopping the cast and restarting.
 
 ```js
-// iframe method
+// window.location method
 var namespace = 'urn:x-cast:com.url.cast';
 var msg = {
     "type": "loc",
